@@ -147,6 +147,8 @@ The following event types are currently exposed...
 * `"http2.receive_response_body"`
 * `"http2.response_closed"`
 
+The exact set of trace events may be subject to change across different versions of `httpcore`. If you need to rely on a particular set of events it is recommended that you pin installation of the package to a fixed version.
+
 ### `"sni_hostname"`
 
 The server's hostname, which is used to confirm the hostname supplied by the SSL certificate.
@@ -159,6 +161,28 @@ extensions = {"sni_hostname": "www.encode.io"}
 response = httpcore.request(
     "GET",
     "https://185.199.108.153",
+    headers=headers,
+    extensions=extensions
+)
+```
+
+### `"target"`
+
+The target that is used as [the HTTP target instead of the URL path](https://datatracker.ietf.org/doc/html/rfc2616#section-5.1.2).
+
+This enables support constructing requests that would otherwise be unsupported. In particular...
+
+* Forward proxy requests using an absolute URI.
+* Tunneling proxy requests using `CONNECT` with hostname as the target.
+* Server-wide `OPTIONS *` requests.
+
+For example:
+
+```python
+extensions = {"target": b"www.encode.io:443"}
+response = httpcore.request(
+    "CONNECT",
+    "http://your-tunnel-proxy.com",
     headers=headers,
     extensions=extensions
 )
@@ -212,9 +236,9 @@ A proxy CONNECT request using the network stream:
 # This will establish a connection to 127.0.0.1:8080, and then send the following...
 #
 # CONNECT http://www.example.com HTTP/1.1
-# Host: 127.0.0.1:8080
-url = httpcore.URL(b"http", b"127.0.0.1", 8080, b"http://www.example.com")
-with httpcore.stream("CONNECT", url) as response:
+url = "http://127.0.0.1:8080"
+extensions = {"target: "http://www.example.com"}
+with httpcore.stream("CONNECT", url, extensions=extensions) as response:
     network_stream = response.extensions["network_stream"]
 
     # Upgrade to an SSL stream...
